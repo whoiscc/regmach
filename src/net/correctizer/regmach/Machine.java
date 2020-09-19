@@ -4,22 +4,23 @@ import java.util.HashMap;
 import java.util.function.Function;
 
 public class Machine {
-    HashMap<Long, Byte[]> pages;
+    HashMap<Integer, Byte[]> pages;
     Byte[] registerFile;
 
     static final int IP_PAGE_REGISTER = 0;
     static final int IP_OFFSET_REGISTER = 1;
 
-    Machine() {
+    Machine(Instruction[] program) {
         pages = new HashMap<>();
         registerFile = new Byte[128];
-        // initialize IP to 0x8000
+        // initialize IP to 0x[00000000]+008000
         setRegister32(IP_PAGE_REGISTER, 0x00000000);
         setRegister32(IP_OFFSET_REGISTER, 0x00008000);
+        // end
+        Instruction.loadProgram(this, program);
     }
 
-    void setRegister32(int registerIndex, long value) {
-        assert value < 1L << 32;
+    void setRegister32(int registerIndex, int value) {
         assert registerIndex >= 0 && registerIndex < 32;
         int offset = registerIndex << 2;
         registerFile[offset] = (byte) (value >> 24);
@@ -28,15 +29,23 @@ public class Machine {
         registerFile[offset + 3] = (byte) (value & 0xff);
     }
 
-    long getRegister32(int registerIndex) {
+    int getRegister32(int registerIndex) {
         assert registerIndex >= 0 && registerIndex < 32;
         int offset = registerIndex << 2;
-
         Function<Byte, Integer> extendByte = (value) -> (int) value & 0xff;
-
         return (extendByte.apply(registerFile[offset]) << 24) |
                 (extendByte.apply(registerFile[offset + 1]) << 16) |
                 (extendByte.apply(registerFile[offset + 2]) << 8) |
                 extendByte.apply(registerFile[offset + 3]);
+    }
+
+    void setMemory32(int page, int offset, int value) {
+        assert offset >= 0 && offset < 1 << 24;
+        assert offset % 4 == 0;
+        pages.putIfAbsent(page, new Byte[1 << 24]);
+        pages.get(page)[offset] = (byte) (value >> 24);
+        pages.get(page)[offset + 1] = (byte) (value >> 16 & 0xff);
+        pages.get(page)[offset + 2] = (byte) (value >> 8 & 0xff);
+        pages.get(page)[offset + 3] = (byte) (value & 0xff);
     }
 }
