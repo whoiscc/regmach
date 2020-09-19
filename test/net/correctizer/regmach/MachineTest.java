@@ -16,4 +16,10 @@ class MachineTest {
         assertEquals(machine.getRegister32(10), 0x11223344);
         assertEquals(machine.getRegister32(11), 0x99aabbcc);
     }
+
+    @Test
+    void loadNopProgram() {
+        Machine machine = new Machine(new Instruction[]{Instruction.nop()});
+        assertEquals(machine.getMemory32(0x00000000, 0x008000), 0x0);
+    }
 }

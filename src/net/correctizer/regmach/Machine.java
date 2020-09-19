@@ -2,6 +2,8 @@ package net.correctizer.regmach;
 
 import java.util.HashMap;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Machine {
     HashMap<Integer, Byte[]> pages;
@@ -10,6 +12,8 @@ public class Machine {
     static final int IP_PAGE_REGISTER = 0;
     static final int IP_OFFSET_REGISTER = 1;
 
+    static final Logger LOGGER = Logger.getLogger(Machine.class.getName());
+
     Machine(Instruction[] program) {
         pages = new HashMap<>();
         registerFile = new Byte[128];
@@ -17,7 +21,8 @@ public class Machine {
         setRegister32(IP_PAGE_REGISTER, 0x00000000);
         setRegister32(IP_OFFSET_REGISTER, 0x00008000);
         // end
-        Instruction.loadProgram(this, program);
+        int instructionCount = Instruction.loadProgram(this, program);
+        LOGGER.log(Level.INFO, "load {0} instructions into memory 0x[00000000]+008000", instructionCount);
     }
 
     void setRegister32(int registerIndex, int value) {
@@ -47,5 +52,16 @@ public class Machine {
         pages.get(page)[offset + 1] = (byte) (value >> 16 & 0xff);
         pages.get(page)[offset + 2] = (byte) (value >> 8 & 0xff);
         pages.get(page)[offset + 3] = (byte) (value & 0xff);
+    }
+
+    int getMemory32(int page, int offset) {
+        assert offset >= 0 && offset < 1 << 24;
+        assert offset % 4 == 0;
+        pages.putIfAbsent(page, new Byte[1 << 24]);
+        Function<Byte, Integer> extendByte = (value) -> (int) value & 0xff;
+        return (extendByte.apply(pages.get(page)[offset]) << 24) |
+                (extendByte.apply(pages.get(page)[offset + 1]) << 16) |
+                (extendByte.apply(pages.get(page)[offset + 2]) << 8) |
+                extendByte.apply(pages.get(page)[offset + 3]);
     }
 }
